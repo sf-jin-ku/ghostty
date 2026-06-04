@@ -47,6 +47,9 @@ pub const Flags = packed struct {
     /// if it doesn't exist.
     performable: bool = false,
 
+    /// True if this binding should bypass the platform IME on macOS.
+    macos_bypasses_ime: bool = false,
+
     /// C type
     pub const C = u8;
 
@@ -65,7 +68,8 @@ pub const Flags = packed struct {
         try testing.expectEqual(@as(u8, 0b0011), (Flags{ .all = true }).cval());
         try testing.expectEqual(@as(u8, 0b0101), (Flags{ .global = true }).cval());
         try testing.expectEqual(@as(u8, 0b1001), (Flags{ .performable = true }).cval());
-        try testing.expectEqual(@as(u8, 0b1111), (Flags{ .consumed = true, .all = true, .global = true, .performable = true }).cval());
+        try testing.expectEqual(@as(u8, 0b10001), (Flags{ .macos_bypasses_ime = true }).cval());
+        try testing.expectEqual(@as(u8, 0b11111), (Flags{ .consumed = true, .all = true, .global = true, .performable = true, .macos_bypasses_ime = true }).cval());
     }
 };
 
@@ -168,6 +172,9 @@ pub const Parser = struct {
             } else if (std.mem.eql(u8, prefix, "performable")) {
                 if (flags.performable) return Error.InvalidFormat;
                 flags.performable = true;
+            } else if (std.mem.eql(u8, prefix, "macos-bypasses-ime")) {
+                if (flags.macos_bypasses_ime) return Error.InvalidFormat;
+                flags.macos_bypasses_ime = true;
             } else {
                 // If we don't recognize the prefix then we're done. We
                 // let any unknown prefix fallthrough to trigger-specific
@@ -2975,6 +2982,16 @@ test "parse: triggers" {
         .action = .{ .ignore = {} },
         .flags = .{ .performable = true },
     }, try parseSingle("performable:shift+a=ignore"));
+
+    // macOS IME bypass keys
+    try testing.expectEqual(Binding{
+        .trigger = .{
+            .mods = .{ .shift = true },
+            .key = .{ .unicode = 'a' },
+        },
+        .action = .{ .ignore = {} },
+        .flags = .{ .macos_bypasses_ime = true },
+    }, try parseSingle("macos-bypasses-ime:shift+a=ignore"));
 
     // invalid key
     try testing.expectError(Error.InvalidFormat, parseSingle("foo=ignore"));
