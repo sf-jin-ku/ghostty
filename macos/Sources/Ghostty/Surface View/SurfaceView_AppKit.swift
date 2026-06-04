@@ -1176,6 +1176,30 @@ extension Ghostty {
             // `interpretKeyEvents` may dispatch it.
             self.lastPerformKeyEvent = nil
 
+            // If this keybind is marked to bypass the IME, dispatch it straight
+            // to the terminal. See the `macos-bypasses-ime:` keybind prefix.
+            if let surfaceModel,
+               let bindingFlags = keyBindingFlags(event, action: action, surface: surfaceModel),
+               bindingFlags.contains(.macosBypassesIME) {
+                // Commit any in-progress composition before the keybind so the
+                // composed text isn't lost. discardMarkedText resets the IME's
+                // internal composition state so the next key starts fresh.
+                if markedText.length > 0 {
+                    surfaceModel.sendText(markedText.string)
+                    inputContext?.discardMarkedText()
+                    unmarkText()
+                }
+
+                _ = keyAction(
+                    action,
+                    event: event,
+                    translationEvent: translationEvent,
+                    text: translationEvent.ghosttyCharacters,
+                    composing: false
+                )
+                return
+            }
+
             self.interpretKeyEvents([translationEvent])
 
             // If our keyboard changed from this we just assume an input method
@@ -1319,11 +1343,7 @@ extension Ghostty {
 
             // Get information about if this is a binding.
             let bindingFlags = surfaceModel.flatMap { surface in
-                var ghosttyEvent = event.ghosttyKeyEvent(GHOSTTY_ACTION_PRESS)
-                return (event.characters ?? "").withCString { ptr in
-                    ghosttyEvent.text = ptr
-                    return surface.keyIsBinding(ghosttyEvent)
-                }
+                keyBindingFlags(event, action: GHOSTTY_ACTION_PRESS, surface: surface)
             }
 
             // If this is a binding then we want to perform it.
@@ -1491,6 +1511,19 @@ extension Ghostty {
                 }
             } else {
                 return ghostty_surface_key(surface, key_ev)
+            }
+        }
+
+        /// Returns flags if this key event matches an active keybind.
+        private func keyBindingFlags(
+            _ event: NSEvent,
+            action: ghostty_input_action_e,
+            surface: Ghostty.Surface
+        ) -> Ghostty.Input.BindingFlags? {
+            var ghosttyEvent = event.ghosttyKeyEvent(action)
+            return (event.characters ?? "").withCString { ptr in
+                ghosttyEvent.text = ptr
+                return surface.keyIsBinding(ghosttyEvent)
             }
         }
 
