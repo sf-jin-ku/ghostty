@@ -1800,6 +1800,17 @@ class: ?[:0]const u8 = null,
 ///
 ///    Available since: 1.1.0
 ///
+///  * `macos-bypasses-ime:`
+///
+///    On macOS, do not offer this keybind's key event to the input method
+///    (IME). Instead, dispatch it directly to the terminal. If an IME
+///    composition is in progress, the composition is committed before the
+///    keybind is dispatched.
+///
+///    This is useful for keybinds that should work even while composing text
+///    with input methods such as Korean, Japanese, or Chinese. It has no effect
+///    on other platforms.
+///
 /// Keybind triggers are not unique per prefix combination. For example,
 /// `ctrl+a` and `global:ctrl+a` are not two separate keybinds. The keybind
 /// set later will overwrite the keybind set earlier. In this case, the
