@@ -1185,7 +1185,7 @@ extension Ghostty {
                 // composed text isn't lost. discardMarkedText resets the IME's
                 // internal composition state so the next key starts fresh.
                 if markedText.length > 0 {
-                    surfaceModel.sendText(markedText.string)
+                    _ = committedTextAction(action, text: markedText.string)
                     inputContext?.discardMarkedText()
                     unmarkText()
                 }
